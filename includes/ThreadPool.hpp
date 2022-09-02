@@ -22,7 +22,6 @@ public:
     template<typename TaskType, typename... Args>
     auto QueueTask (TaskType&& task, Args&&... args) {
         using ResultType    = decltype (task (args...));
-        using PromiseType   = std::promise<ResultType>;
         using EntryType     = TaskEntry<ResultType>;
 
         std::shared_ptr<EntryType> entry = std::make_shared<EntryType> ();
