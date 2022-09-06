@@ -1,59 +1,31 @@
-#ifndef THREADPOOL_H
-#define THREADPOOL_H
+#ifndef THREADPOOL_HPP
+#define THREADPOOL_HPP
 
-#include <future>
-#include <list>
-#include <memory>
+#include <array>
+#include <cstddef>
+#include <thread>
+
+#include "ThreadEntry.hpp"
 
 
 namespace ThreadPool {
 
+template<std::size_t ThreadCount>
 class ThreadPool {
-    struct TaskEntryBase {
-        std::function<void ()> task;
-        virtual ~TaskEntryBase () = default;
-    };
-
-    template<typename ResultType>
-    struct TaskEntry : public TaskEntryBase  {
-        std::promise<ResultType> promise;
-        virtual ~TaskEntry () override = default;
-    };
-
 public:
-    template<typename TaskType, typename... Args>
-    auto QueueTask (TaskType&& task, Args&&... args) {
-        using ResultType    = decltype (task (args...));
-        using EntryType     = TaskEntry<ResultType>;
-
-        std::shared_ptr<EntryType> entry = std::make_shared<EntryType> ();
-        auto voidTask = [task = std::move (task), &args..., entry] () -> void {
-            if constexpr (std::is_void_v <ResultType>) {
-                task (std::forward <Args> (args)...);
-                entry->promise.set_value ();
-            }
-            else {
-                entry->promise.set_value (task (std::forward <Args> (args)...));
-            }
-        };
-        entry->task = std::move (voidTask);
-        tasks.emplace_back (entry);
-        return entry->promise.get_future ();
-    }
-
-
-    void ExecuteTasks () {
-        for (const std::shared_ptr<TaskEntryBase>& entry : tasks) {
-            entry->task ();
+    ThreadPool () = default;
+    ~ThreadPool () {
+        for (const ThreadEntry& entry) {
+            entry.doRun = false;
+            entry.thread.join ();
         }
     }
 
-
 private:
-    std::list<std::shared_ptr<TaskEntryBase>> tasks;
+    std::array<ThreadEntry, ThreadCount> threads;
 };
 
 } // namespace ThreadPool
 
 
-#endif // THREADPOOL_H
+#endif // THREADPOOL_HPP
