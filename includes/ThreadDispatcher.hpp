@@ -1,28 +1,36 @@
 #ifndef THREADDISPATCHER_HPP
 #define THREADDISPATCHER_HPP
 
+#include <array>
 #include <future>
 #include <list>
 #include <memory>
 
+#include "PooledThread.hpp"
+#include "TaskEntry.hpp"
+
 
 namespace ThreadPool {
 
+template<std::size_t poolSize>
 class ThreadDispatcher {
-    struct TaskEntryBase {
-        std::function<void ()> task;
-        virtual ~TaskEntryBase () = default;
-    };
-
-    template<typename ResultType>
-    struct TaskEntry : public TaskEntryBase  {
-        std::promise<ResultType> promise;
-        virtual ~TaskEntry () override = default;
-    };
-
 public:
+    ThreadDispatcher ()
+        : dispatcherThread  (&ThreadDispatcher::DispatcherTask, this)
+        , isRunning         (true)
+    {}
+
+
+    ~ThreadDispatcher ()
+    {
+        isRunning = false;
+        dispatcherThread.join ();
+    }
+
+
     template<typename TaskType, typename... Args>
-    auto QueueTask (TaskType&& task, Args&&... args) {
+    auto QueueTask (TaskType&& task, Args&&... args)
+    {
         using ResultType    = decltype (task (args...));
         using EntryType     = TaskEntry<ResultType>;
 
@@ -41,16 +49,40 @@ public:
         return entry->promise.get_future ();
     }
 
+private:
+    std::array<PooledThread, poolSize>          threadPool;
+    std::list<std::shared_ptr<TaskEntryBase>>   tasks;
+    std::thread                                 dispatcherThread;
+    bool                                        isRunning;
 
-    void ExecuteTasks () {
-        for (const std::shared_ptr<TaskEntryBase>& entry : tasks) {
-            entry->task ();
+
+    void DispatcherTask ()
+    {
+        using namespace std::chrono_literals;
+
+        while (isRunning) {
+            if (tasks.empty ()) {
+                std::this_thread::sleep_for (10ms);
+                continue;
+            }
+
+            decltype (tasks)::iterator it = tasks.begin ();
+            decltype (tasks)::iterator end = tasks.end ();
+            while (it != end) {
+                for (PooledThread& thread : threadPool) {
+                    if (it == end)
+                        break;
+
+                    if (thread.IsFree ()) {
+                        std::this_thread::sleep_for (10ms);
+                        thread.AddTask (std::move ((*it)->task));
+                        ++it;
+                        tasks.pop_front ();
+                    }
+                }
+            }
         }
     }
-
-
-private:
-    std::list<std::shared_ptr<TaskEntryBase>> tasks;
 };
 
 } // namespace ThreadPool

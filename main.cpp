@@ -1,23 +1,28 @@
+#include <chrono>
 #include <iostream>
+#include <thread>
 #include <type_traits>
+#include <vector>
 
 #include "includes/ThreadDispatcher.hpp"
 
+
+void DelayedTask (int i) {
+    using namespace std::chrono_literals;
+    std::this_thread::sleep_for (1s);
+    std::cout << i << " delayed task over" << std::endl;
+}
+
+
 int main ()
 {
-    ThreadPool::ThreadDispatcher dispatcher;
-    auto task = [] (int a, int b) -> int {
-        return a + b;
-    };
-    int x = 0; 
-    auto voidTask = [&] (int y) -> void {
-        x = y;
-    };
-    std::future<int> intResult = dispatcher.QueueTask (std::move (task), 12, 35);
-    std::future<void> voidResult = dispatcher.QueueTask (std::move (voidTask), 3);
-    dispatcher.ExecuteTasks ();
-    voidResult.wait ();
-    std::cout << x << std::endl;
-    std::cout << intResult.get () << std::endl;
+    ThreadPool::ThreadDispatcher<4> dispatcher;
+    std::vector<std::future<void>> futures;
+    for (int i = 0; i < 10; ++i) {
+        std::function<void ()> func = [i] () { DelayedTask (i); };
+        futures.push_back (dispatcher.QueueTask (std::move (func)));
+    }
+    for (const std::future<void>& f : futures)
+        f.wait ();
     return 0;
 }
