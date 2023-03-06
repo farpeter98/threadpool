@@ -7,22 +7,25 @@
 #include "includes/ThreadDispatcher.hpp"
 
 
-void DelayedTask (int i) {
+int DelayedTask (int i) {
     using namespace std::chrono_literals;
     std::this_thread::sleep_for (1s);
     std::cout << i << " delayed task over" << std::endl;
+    return i;
 }
 
 
 int main ()
 {
+    using ResultT = ThreadPool::ThreadResult<int>;
+
     ThreadPool::ThreadDispatcher<4> dispatcher;
-    std::vector<std::future<void>> futures;
+    std::vector<ResultT> results;
     for (int i = 0; i < 10; ++i) {
-        std::function<void ()> func = [i] () { DelayedTask (i); };
-        futures.push_back (dispatcher.QueueTask (std::move (func)));
+        std::function<int ()> func = [i] () { return DelayedTask (i); };
+        results.push_back (dispatcher.QueueTask (std::move (func)));
     }
-    for (const std::future<void>& f : futures)
-        f.wait ();
+    for (const ResultT& result : results)
+        std::cout << result.GetFuture ().get () << std::endl;
     return 0;
 }

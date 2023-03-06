@@ -11,6 +11,23 @@
 
 namespace ThreadPool {
 
+
+template<typename ResultType>
+class ThreadResult {
+private:
+    std::shared_ptr<TaskEntry<ResultType>> taskEntry;
+
+public:
+    ThreadResult (const std::shared_ptr<TaskEntry<ResultType>>& taskEntry)
+        : taskEntry { taskEntry }
+    {}
+
+    std::future<ResultType> GetFuture () const
+    {
+        return taskEntry->promise.get_future ();
+    }
+};
+
 template<std::size_t poolSize>
 class ThreadDispatcher {
 public:
@@ -45,7 +62,7 @@ public:
         };
         entry->task = std::move (voidTask);
         tasks.emplace_back (entry);
-        return entry->promise.get_future ();
+        return ThreadResult<ResultType> { entry };
     }
 
 private:
@@ -85,6 +102,5 @@ private:
 };
 
 } // namespace ThreadPool
-
 
 #endif // THREADDISPATCHER_HPP

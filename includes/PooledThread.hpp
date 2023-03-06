@@ -75,7 +75,7 @@ private:
     }
 };
 
-};
+}; // namespace ThreadPool
 
 
 #endif // POOLEDTHREAD_HPP
