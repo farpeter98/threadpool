@@ -2,8 +2,7 @@
 #define THREADDISPATCHER_HPP
 
 #include <array>
-#include <future>
-#include <list>
+#include <deque>
 #include <memory>
 
 #include "PooledThread.hpp"
@@ -51,7 +50,7 @@ public:
 
 private:
     std::array<PooledThread, poolSize>          threadPool;
-    std::list<std::shared_ptr<TaskEntryBase>>   tasks;
+    std::deque<std::shared_ptr<TaskEntryBase>>  tasks;
     std::thread                                 dispatcherThread;
     bool                                        isRunning;
 
@@ -66,8 +65,8 @@ private:
                 continue;
             }
 
-            decltype (tasks)::iterator it = tasks.begin ();
-            decltype (tasks)::iterator end = tasks.end ();
+            typename decltype (tasks)::iterator it = tasks.begin ();
+            typename decltype (tasks)::iterator end = tasks.end ();
             while (it != end) {
                 for (PooledThread& thread : threadPool) {
                     if (it == end)

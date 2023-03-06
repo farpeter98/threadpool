@@ -2,6 +2,7 @@
 #define TASKENTRY_HPP
 
 #include <functional>
+#include <future>
  
 
 namespace ThreadPool {
