@@ -4,6 +4,7 @@
 #include <array>
 #include <deque>
 #include <memory>
+#include <type_traits>
 
 #include "PooledThread.hpp"
 #include "TaskEntry.hpp"
@@ -44,15 +45,16 @@ public:
     }
 
 
-    template<typename TaskType, typename... Args>
-    auto QueueTask (TaskType&& task, Args&&... args)
+    template<typename ReturnType, typename... Ts, typename... Args>
+    ThreadResult<ReturnType> QueueTask (std::function<ReturnType (Ts...)>&& task, Args&&... args)
     {
-        using ResultType    = decltype (task (args...));
-        using EntryType     = TaskEntry<ResultType>;
+        static_assert (std::conjunction_v<std::is_same<Ts, std::decay_t<Args>>...>, "Supplied arguments and function signature do not match!");
+
+        using EntryType     = TaskEntry<ReturnType>;
 
         std::shared_ptr<EntryType> entry = std::make_shared<EntryType> ();
-        auto voidTask = [task = std::move (task), &args..., entry] () -> void {
-            if constexpr (std::is_void_v <ResultType>) {
+        std::function<void ()> voidTask = [task = std::move (task), &args..., entry] () -> void {
+            if constexpr (std::is_void_v <ReturnType>) {
                 task (std::forward <Args> (args)...);
                 entry->promise.set_value ();
             }
@@ -62,7 +64,7 @@ public:
         };
         entry->task = std::move (voidTask);
         tasks.emplace_back (entry);
-        return ThreadResult<ResultType> { entry };
+        return { entry };
     }
 
 private:
