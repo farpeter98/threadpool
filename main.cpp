@@ -1,4 +1,5 @@
 #include <chrono>
+#include <functional>
 #include <iostream>
 #include <thread>
 #include <type_traits>
@@ -7,7 +8,7 @@
 #include "includes/ThreadDispatcher.hpp"
 
 
-int DelayedTask (int i) {
+static int DelayedTask (int i) {
     using namespace std::chrono_literals;
     std::this_thread::sleep_for (1s);
     std::cout << i << " delayed task over" << std::endl;

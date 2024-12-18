@@ -1,10 +1,8 @@
 cmake_minimum_required(VERSION 3.0.0)
 project(threadpool VERSION 0.1.0)
 
-set(EXEC ${PROJECT_NAME})
+set(CMAKE_CXX_STANDARD 20)
 
-set(CMAKE_CXX_STANDARD 17)
+include_directories(test PRIVATE includes)
 
-include_directories(includes)
-
-add_executable(${EXEC} main.cpp)
+add_executable(test main.cpp includes/PooledThread.hpp includes/TaskEntry.hpp includes/ThreadDispatcher.hpp)
