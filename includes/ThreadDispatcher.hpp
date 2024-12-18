@@ -2,8 +2,12 @@
 #define THREADDISPATCHER_HPP
 
 #include <array>
+#include <atomic>
 #include <deque>
+#include <functional>
+#include <future>
 #include <memory>
+#include <thread>
 #include <type_traits>
 
 #include "PooledThread.hpp"
@@ -33,8 +37,8 @@ template<std::size_t poolSize>
 class ThreadDispatcher {
 public:
     ThreadDispatcher ()
-        : dispatcherThread  (&ThreadDispatcher::DispatcherTask, this)
-        , isRunning         (true)
+        : isRunning         (true)
+        , dispatcherThread  (&ThreadDispatcher::DispatcherTask, this)
     {}
 
 
@@ -48,9 +52,7 @@ public:
     template<typename ReturnType, typename... Ts, typename... Args>
     ThreadResult<ReturnType> QueueTask (std::function<ReturnType (Ts...)>&& task, Args&&... args)
     {
-        static_assert (std::conjunction_v<std::is_same<Ts, std::decay_t<Args>>...>, "Supplied arguments and function signature do not match!");
-
-        using EntryType     = TaskEntry<ReturnType>;
+        using EntryType = TaskEntry<ReturnType>;
 
         std::shared_ptr<EntryType> entry = std::make_shared<EntryType> ();
         std::function<void ()> voidTask = [task = std::move (task), &args..., entry] () -> void {
@@ -68,10 +70,11 @@ public:
     }
 
 private:
-    std::array<PooledThread, poolSize>          threadPool;
     std::deque<std::shared_ptr<TaskEntryBase>>  tasks;
+    // declare isRunning before dispatcherThread so that they can be initialized in the member initializer list
+    std::atomic_bool                            isRunning;
     std::thread                                 dispatcherThread;
-    bool                                        isRunning;
+    std::array<PooledThread, poolSize>          threadPool;
 
 
     void DispatcherTask ()
@@ -84,8 +87,8 @@ private:
                 continue;
             }
 
-            typename decltype (tasks)::iterator it = tasks.begin ();
-            typename decltype (tasks)::iterator end = tasks.end ();
+            auto it = tasks.begin ();
+            const auto end = tasks.end ();
             while (it != end) {
                 for (PooledThread& thread : threadPool) {
                     if (it == end)

@@ -5,7 +5,7 @@
 #include <type_traits>
 #include <vector>
 
-#include "includes/ThreadDispatcher.hpp"
+#include "ThreadDispatcher.hpp"
 
 
 static int DelayedTask (int i) {
@@ -16,7 +16,7 @@ static int DelayedTask (int i) {
 }
 
 
-void DelayedTaskVoid () {
+static void DelayedTaskVoid () {
     using namespace std::chrono_literals;
     for (int i = 0; i < 10; ++i) {
         std::this_thread::sleep_for (1s);

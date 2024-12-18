@@ -1,22 +1,25 @@
 #ifndef POOLEDTHREAD_HPP
 #define POOLEDTHREAD_HPP
 
+#include <atomic>
 #include <chrono>
 #include <condition_variable>
 #include <functional>
-#include <optional>
 #include <mutex>
+#include <optional>
 #include <thread>
+#include <type_traits>
 
 
 namespace ThreadPool {
 
 class PooledThread {
     using MaybeTask = std::optional<std::function<void ()>>;
-
+    
     std::condition_variable cv;
-    bool                    doRun;
     MaybeTask               task;
+    // declare doRun before thread so that they can be initialized in the member initializer list
+    std::atomic_bool        doRun;
     std::thread             thread;
 
 public:
